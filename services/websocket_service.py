@@ -17,11 +17,11 @@ class WebSocketServer:
         ws_current = web.WebSocketResponse()
         await ws_current.prepare(request)
 
-        print("✅ WebSocket client connected!")
+        print("✅ WebSocket client connected!", flush=True)
         handler = ClientHandler(ws_current)
         try:
             async for msg in ws_current:
-                print(f"📥 Received: {msg.data}")
+                print(f"📥 Received: {msg.data}", flush=True)
                 await handler.process(msg.data)
         except Exception as e:
             print(f"⚠️ Unexpected error: {e}")
@@ -30,7 +30,6 @@ class WebSocketServer:
         return ws_current
 
     async def health_check(self, request):
-        # print("💓 Health check received")
         return web.Response(text="OK")
 
     def start(self):
