@@ -30,7 +30,7 @@ class WebSocketServer:
         return ws_current
 
     async def health_check(self, request):
-        print("💓 Health check received")
+        # print("💓 Health check received")
         return web.Response(text="OK")
 
     def start(self):
