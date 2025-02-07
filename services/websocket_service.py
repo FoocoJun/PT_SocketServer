@@ -1,6 +1,8 @@
 import asyncio
 from aiohttp import web
 from handlers.client_handler import ClientHandler
+from handlers.data_dispatcher import DataDispatcher
+from handlers.aws_handler import AWSHandler
 
 class WebSocketServer:
     def __init__(self, host: str, port: int):
@@ -12,26 +14,36 @@ class WebSocketServer:
         print(f"🌐 Received {request.method} request for {request.path}")
         return web.Response(text="Request received")
 
+    # ✅ WebSocket 핸들러 (클라이언트 연결 처리)
     async def websocket_handler(self, request):
-        print("📡 Incoming WebSocket connection...")
         ws_current = web.WebSocketResponse()
         await ws_current.prepare(request)
 
-        print("✅ WebSocket client connected!", flush=True)
-        handler = ClientHandler(ws_current)
+        print("✅ New WebSocket client connected!")
+
+        # ✅ 클라이언트마다 독립적인 인스턴스 생성
+        aws_handler = AWSHandler()                      # 각 클라이언트 전용 AWSHandler
+        data_dispatcher = DataDispatcher(aws_handler)   # 각 클라이언트 전용 DataDispatcher
+        handler = ClientHandler(ws_current, data_dispatcher)  # 각 클라이언트 전용 ClientHandler
+
+        # ✅ 상호 참조 설정
+        data_dispatcher.client_handler = handler
+
         try:
             async for msg in ws_current:
-                print(f"📥 Received: {msg.data}", flush=True)
                 await handler.process(msg.data)
         except Exception as e:
-            print(f"⚠️ Unexpected error: {e}")
+            print(f"⚠️ Error: {e}")
         finally:
             print("🔒 WebSocket connection closed.")
+
         return ws_current
 
+    # ✅ 헬스 체크용 엔드포인트
     async def health_check(self, request):
         return web.Response(text="OK")
 
+    # ✅ 서버 시작
     def start(self):
         app = web.Application()
 
