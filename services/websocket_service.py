@@ -22,7 +22,10 @@ class WebSocketServer:
                             print(f"🔗 Ping sent to {self.ping_target}, Status: {response.status}")
                 except Exception as e:
                     print(f"⚠️ Ping failed: {e}")
-            await asyncio.sleep(300)  # 5분 간격으로 Ping (15분 이내 활성화 유지)
+            # ✅ 5~8분(300~480초) 사이의 랜덤 대기 시간
+            wait_time = random.randint(300, 480)
+            print(f"⏱️ Next ping in {wait_time // 60} minutes {wait_time % 60} seconds")
+            await asyncio.sleep(wait_time)
 
     # ✅ 헬스 체크 엔드포인트
     async def health_check(self, request):
