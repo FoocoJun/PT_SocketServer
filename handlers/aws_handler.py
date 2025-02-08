@@ -23,6 +23,10 @@ class AWSHandler:
             # ✅ 3~5번 호출마다 Partial 데이터 전송
             if self.audio_counter % random.randint(3, 5) == 0:
                 await self.send_mocked_partial_data(callback)
+
+            # ✅ 7~10번 호출마다 Final 데이터 전송 (랜덤)
+            if self.audio_counter % random.randint(7, 10) == 0:
+                await self.send_mocked_final_data(callback)
         else:
             print("⚠️ No active connection (Dummy Mode)")
 
@@ -59,8 +63,3 @@ class AWSHandler:
         await asyncio.sleep(1)  # ✅ Final 데이터 지연
         print(f"🏁 [Dummy Mode] Sending Final: {dummy_final['Transcript']['Results'][0]['Alternatives'][0]['Transcript']}")
         await callback(dummy_final)
-
-    async def end_stream(self, callback):
-        # ✅ 스트리밍 종료 시 Final 데이터 전송
-        await self.send_mocked_final_data(callback)
-        print("🔒 [Dummy Mode] Stream Ended")
