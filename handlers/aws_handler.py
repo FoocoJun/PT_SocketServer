@@ -3,13 +3,11 @@ import boto3
 import json
 import websockets
 import os
-from dotenv import load_dotenv
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 from urllib.parse import urlencode
 
 # ✅ 환경 변수 로드
-load_dotenv()
 AWS_REGION = os.getenv("AWS_REGION")
 AWS_SERVICE = "transcribe"
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
