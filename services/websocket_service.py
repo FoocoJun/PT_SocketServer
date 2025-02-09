@@ -11,7 +11,7 @@ class WebSocketServer:
     def __init__(self, host: str, port: int):
         self.host = host
         self.port = port
-        self.ping_target = os.getenv("PING_TARGET")  # ✅ 환경 변수로 Ping 대상 서버 설정
+        self.ping_target = os.getenv("PING_TARGET")  # ✅ Ping 대상 서버 설정
 
     # ✅ Ping 보내는 비동기 함수
     async def ping_target_server(self):
@@ -23,6 +23,7 @@ class WebSocketServer:
                             print(f"🔗 Ping sent to {self.ping_target}, Status: {response.status}")
                 except Exception as e:
                     print(f"⚠️ Ping failed: {e}")
+
             # ✅ 5~8분(300~480초) 사이의 랜덤 대기 시간
             wait_time = random.randint(300, 480)
             print(f"⏱️ Next ping in {wait_time // 60} minutes {wait_time % 60} seconds")
@@ -51,6 +52,7 @@ class WebSocketServer:
             print(f"⚠️ Error: {e}")
         finally:
             print("🔒 WebSocket connection closed.")
+            await handler.cleanup()  # ✅ 연결 종료 시 핸들러 정리
 
         return ws_current
 
