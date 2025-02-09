@@ -4,7 +4,8 @@ import json
 import websockets
 import os
 from dotenv import load_dotenv
-from botocore.signers import RequestSigner
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
 from urllib.parse import urlencode
 
 # ✅ 환경 변수 로드
@@ -21,40 +22,30 @@ class AWSHandler:
 
     # ✅ Presigned URL 생성
     def generate_presigned_url(self):
-        credentials = boto3.Session().get_credentials()
+        session = boto3.Session()
+        credentials = session.get_credentials()
+        region = AWS_REGION
+        service = 'transcribe'
 
-        signer = RequestSigner(
-            service_id=AWS_SERVICE,
-            region_name=AWS_REGION,
-            signing_name=AWS_SERVICE,
-            signature_version='v4',
-            credentials=credentials,
-            event_emitter=boto3.session.Session()._session.get_component('event_emitter')
-        )
+        host = f'transcribestreaming.{region}.amazonaws.com:8443'
+        endpoint = f'wss://{host}/stream-transcription-websocket'
 
         params = {
-            'method': 'GET',
-            'url': f"wss://transcribestreaming.{AWS_REGION}.amazonaws.com:8443/stream-transcription-websocket",
-            'body': '',
-            'headers': {'host': f"transcribestreaming.{AWS_REGION}.amazonaws.com"},
-            'context': {}
-        }
-
-        query_params = {
             "language-code": "en-US",
             "media-encoding": "pcm",
             "sample-rate": "16000"
         }
-        
-        # ✅ URL 인코딩 추가
-        url_with_params = f"{params['url']}?{urlencode(query_params)}"
 
-        presigned_url = signer.generate_presigned_url(
-            request_dict={**params, 'url': url_with_params},
-            expires_in=300,  # 5분 유효
-            operation_name=''
+        request = AWSRequest(
+            method='GET',
+            url=f"{endpoint}?{urlencode(params)}",
+            headers={"host": host}
         )
-        return presigned_url
+
+        # ✅ 서명 추가
+        SigV4Auth(credentials, service, region).add_auth(request)
+
+        return request.url
 
     # ✅ AWS 연결 확인
     async def connect(self):
