@@ -9,8 +9,11 @@ class ClientHandler:
         await self.data_dispatcher.handle_audio(audio_data)
 
     async def send_to_unity(self, partial_result):
-        # Unity로 Partial 데이터 전송
-        await self.websocket.send_str(f"📝 Partial Result: {partial_result}")
+        # ✅ 연결 상태 확인 후 데이터 전송
+        if not self.websocket.closed:
+            await self.websocket.send_str(f"📝 Partial Result: {partial_result}")
+        else:
+            print("⚠️ WebSocket is already closed. Skipping message.")
 
     async def close(self):
         # ✅ WebSocket 연결 종료
