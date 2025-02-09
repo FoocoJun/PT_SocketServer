@@ -40,7 +40,10 @@ class WebSocketServer:
         print("✅ New WebSocket client connected!")
 
         aws_handler = AWSHandler()
-        await aws_handler.connect()  # ✅ 서버 시작 시 AWS 연결 확인
+        connected = await aws_handler.connect()
+
+        if not connected:
+            print("⚠️ AWS 연결 실패 - WebSocket 연결은 유지됩니다.")
 
         data_dispatcher = DataDispatcher(aws_handler)
         handler = ClientHandler(ws_current, data_dispatcher)

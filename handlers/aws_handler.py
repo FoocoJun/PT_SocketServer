@@ -12,6 +12,11 @@ AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = os.getenv("AWS_REGION")
 
+# ✅ 환경 변수 로드 확인 (디버깅용)
+print(f"AWS_ACCESS_KEY: {os.getenv('AWS_ACCESS_KEY_ID')}")
+print(f"AWS_SECRET_KEY: {os.getenv('AWS_SECRET_ACCESS_KEY')}")
+print(f"AWS_REGION: {os.getenv('AWS_REGION')}")
+
 class AWSHandler:
     def __init__(self):
         self.transcribe_client = boto3.client(
@@ -29,6 +34,9 @@ class AWSHandler:
             print("✅ Successfully connected to AWS Transcribe!")
         except Exception as e:
             print(f"❌ Failed to connect to AWS Transcribe: {e}")
+            # ✅ 연결 실패 시에도 WebSocket은 유지
+            return False
+        return True
 
     async def send_audio(self, audio_data, callback):
         # ✅ AWS로 데이터 전송 (추후 스트리밍 로직 추가)
@@ -51,4 +59,8 @@ class AWSHandler:
         await callback(dummy_partial)
 
     async def disconnect(self):
-        print("🔌 AWS Transcribe connection closed.")
+        if self.connection:
+            await self.connection.close()
+            print("🔌 AWS Transcribe connection closed.")
+        else:
+            print("⚠️ No active AWS connection to close.")
