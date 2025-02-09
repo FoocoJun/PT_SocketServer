@@ -52,9 +52,17 @@ class WebSocketServer:
             print(f"⚠️ Error: {e}")
         finally:
             print("🔒 WebSocket connection closed.")
-            await handler.cleanup()  # ✅ 연결 종료 시 핸들러 정리
+            await self.cleanup(handler)  # ✅ 항상 핸들러 정리
 
         return ws_current
+
+    async def cleanup(self, handler):
+        try:
+            await handler.close()  # ✅ 핸들러 종료
+            print("✅ Handler cleanup successful.")
+        except Exception as e:
+            print(f"⚠️ Cleanup error: {e}")  # ✅ 예외 처리 추가
+
 
     async def start_server(self):
         app = web.Application()

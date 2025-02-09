@@ -16,3 +16,9 @@ class DataDispatcher:
         # ✅ Unity로 Partial 결과 전송
         if self.client_handler:
             await self.client_handler.send_to_unity(partial_result)
+
+    async def close(self):
+        # ✅ AWSHandler 연결 종료
+        if hasattr(self.aws_handler, "disconnect"):
+            await self.aws_handler.disconnect()
+            print("🔌 AWSHandler disconnected.")

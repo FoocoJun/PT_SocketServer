@@ -11,3 +11,14 @@ class ClientHandler:
     async def send_to_unity(self, partial_result):
         # Unity로 Partial 데이터 전송
         await self.websocket.send_str(f"📝 Partial Result: {partial_result}")
+
+    async def close(self):
+        # ✅ WebSocket 연결 종료
+        if not self.websocket.closed:
+            await self.websocket.close()
+            print("🔒 WebSocket connection closed by ClientHandler.")
+
+        # ✅ DataDispatcher를 통해 AWSHandler 연결 종료
+        await self.data_dispatcher.close()
+
+        print("✅ ClientHandler resources cleaned up.")

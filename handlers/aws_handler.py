@@ -63,3 +63,8 @@ class AWSHandler:
         await asyncio.sleep(1)  # ✅ Final 데이터 지연
         print(f"🏁 [Dummy Mode] Sending Final: {dummy_final['Transcript']['Results'][0]['Alternatives'][0]['Transcript']}")
         await callback(dummy_final)
+
+    async def disconnect(self):
+        if self.connection:
+            self.connection = None
+            print("🔌 AWSHandler connection closed.")
