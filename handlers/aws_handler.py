@@ -5,7 +5,7 @@ import websockets
 import os
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
-from presigned_url_generator import AWSTranscribePresignedURL
+from handlers.presigned_url_generator import AWSTranscribePresignedURL
 from urllib.parse import urlencode
 
 # ✅ 환경 변수 로드
