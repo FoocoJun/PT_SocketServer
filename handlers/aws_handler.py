@@ -1,70 +1,54 @@
+import boto3
+import os
+from dotenv import load_dotenv
 import asyncio
-import random
+import websockets
+import json
+
+# ✅ 환경 변수 로드
+load_dotenv()
+
+AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_REGION")
 
 class AWSHandler:
     def __init__(self):
+        self.transcribe_client = boto3.client(
+            'transcribe',
+            aws_access_key_id=AWS_ACCESS_KEY,
+            aws_secret_access_key=AWS_SECRET_KEY,
+            region_name=AWS_REGION
+        )
         self.connection = None
-        self.audio_counter = 0  # ✅ send_audio 호출 횟수 카운트
 
-    async def connect(self, aws_ws_url):
-        # # 실제 AWS 연결 (비활성화 상태)
-        # self.connection = await websockets.connect(aws_ws_url)
-
-        # ✅ 실제 연결 대신 더미 연결 처리
-        self.connection = True
-        print(f"🔗 [Dummy Mode] Pretending to connect to {aws_ws_url}")
+    async def connect(self):
+        try:
+            # ✅ Transcribe 연결 테스트
+            response = self.transcribe_client.list_transcription_jobs(MaxResults=1)
+            print("✅ Successfully connected to AWS Transcribe!")
+        except Exception as e:
+            print(f"❌ Failed to connect to AWS Transcribe: {e}")
 
     async def send_audio(self, audio_data, callback):
-        if self.connection:
-            # ✅ send_audio 호출 카운트 증가
-            self.audio_counter += 1
-            print(f"📤 [Dummy Mode] Sending audio data #{self.audio_counter}")
+        # ✅ AWS로 데이터 전송 (추후 스트리밍 로직 추가)
+        await asyncio.sleep(1)  # 더미 지연
+        print(f"📤 Sending audio data to AWS: {audio_data[:10]}...")
 
-            # ✅ 3~5번 호출마다 Partial 데이터 전송
-            if self.audio_counter % random.randint(3, 5) == 0:
-                await self.send_mocked_partial_data(callback)
-
-            # ✅ 7~10번 호출마다 Final 데이터 전송 (랜덤)
-            if self.audio_counter % random.randint(7, 10) == 0:
-                await self.send_mocked_final_data(callback)
-        else:
-            print("⚠️ No active connection (Dummy Mode)")
-
-    async def send_mocked_partial_data(self, callback):
+        # ✅ 더미 Partial 데이터 반환
         dummy_partial = {
             "Transcript": {
                 "Results": [
                     {
                         "Alternatives": [
-                            {"Transcript": f"Mocked partial result #{self.audio_counter}"}
+                            {"Transcript": "Mocked partial result"}
                         ],
                         "IsPartial": True
                     }
                 ]
             }
         }
-        await asyncio.sleep(0.5)  # ✅ 약간의 지연 시뮬레이션
-        print(f"📥 [Dummy Mode] Sending Partial: {dummy_partial['Transcript']['Results'][0]['Alternatives'][0]['Transcript']}")
         await callback(dummy_partial)
 
-    async def send_mocked_final_data(self, callback):
-        dummy_final = {
-            "Transcript": {
-                "Results": [
-                    {
-                        "Alternatives": [
-                            {"Transcript": "This is the final mocked result"}
-                        ],
-                        "IsPartial": False
-                    }
-                ]
-            }
-        }
-        await asyncio.sleep(1)  # ✅ Final 데이터 지연
-        print(f"🏁 [Dummy Mode] Sending Final: {dummy_final['Transcript']['Results'][0]['Alternatives'][0]['Transcript']}")
-        await callback(dummy_final)
-
     async def disconnect(self):
-        if self.connection:
-            self.connection = None
-            print("🔌 AWSHandler connection closed.")
+        print("🔌 AWS Transcribe connection closed.")

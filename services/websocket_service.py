@@ -40,6 +40,8 @@ class WebSocketServer:
         print("✅ New WebSocket client connected!")
 
         aws_handler = AWSHandler()
+        await aws_handler.connect()  # ✅ 서버 시작 시 AWS 연결 확인
+
         data_dispatcher = DataDispatcher(aws_handler)
         handler = ClientHandler(ws_current, data_dispatcher)
 
@@ -51,18 +53,13 @@ class WebSocketServer:
         except Exception as e:
             print(f"⚠️ Error: {e}")
         finally:
-            print("🔒 WebSocket connection closed.", flush=True)
-            await self.cleanup(handler)  # ✅ 항상 핸들러 정리
+            try:
+                await handler.close()  # ✅ 핸들러 종료 및 리소스 정리
+                print("✅ Handler cleanup successful.")
+            except Exception as cleanup_error:
+                print(f"⚠️ Cleanup error: {cleanup_error}")  # ✅ 예외 처리 추가
 
         return ws_current
-
-    async def cleanup(self, handler):
-        try:
-            await handler.close()  # ✅ 핸들러 종료
-            print("✅ Handler cleanup successful.")
-        except Exception as e:
-            print(f"⚠️ Cleanup error: {e}")  # ✅ 예외 처리 추가
-
 
     async def start_server(self):
         app = web.Application()
