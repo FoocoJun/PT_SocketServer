@@ -1,61 +1,56 @@
+import asyncio
 import boto3
+import json
+import websockets
 import os
 from dotenv import load_dotenv
-import asyncio
-import websockets
-import json
 
 # ✅ 환경 변수 로드
 load_dotenv()
-
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 AWS_REGION = os.getenv("AWS_REGION")
 
 class AWSHandler:
     def __init__(self):
-        self.transcribe_client = boto3.client(
-            'transcribe',
-            aws_access_key_id=AWS_ACCESS_KEY,
-            aws_secret_access_key=AWS_SECRET_KEY,
-            region_name=AWS_REGION
-        )
         self.connection = None
+        self.transcribe_client = boto3.client('transcribe', region_name=AWS_REGION)
 
     async def connect(self):
         try:
-            # ✅ Transcribe 연결 테스트
             response = self.transcribe_client.list_transcription_jobs(MaxResults=1)
             print("✅ Successfully connected to AWS Transcribe!")
         except Exception as e:
             print(f"❌ Failed to connect to AWS Transcribe: {e}")
-            # ✅ 연결 실패 시에도 WebSocket은 유지
             return False
         return True
 
     async def send_audio(self, audio_data, callback):
-        # ✅ AWS로 데이터 전송 (추후 스트리밍 로직 추가)
-        await asyncio.sleep(1)  # 더미 지연
-        print(f"📤 Sending audio data to AWS: {audio_data[:10]}...")
+        if not self.connection:
+            await self.start_transcribe_stream(callback)
 
-        # ✅ 더미 Partial 데이터 반환
-        dummy_partial = {
-            "Transcript": {
-                "Results": [
-                    {
-                        "Alternatives": [
-                            {"Transcript": "Mocked partial result"}
-                        ],
-                        "IsPartial": True
-                    }
-                ]
-            }
-        }
-        await callback(dummy_partial)
+        await self.connection.send(audio_data)
+
+    async def start_transcribe_stream(self, callback):
+        try:
+            url = "wss://transcribestreaming.{region}.amazonaws.com:8443/stream-transcription-websocket" \
+                  "?language-code=en-US&media-encoding=pcm&sample-rate=16000".format(region=AWS_REGION)
+
+            self.connection = await websockets.connect(url)
+            print("🎙️ AWS Transcribe streaming started!")
+
+            asyncio.create_task(self.receive_transcribe_data(callback))
+
+        except Exception as e:
+            print(f"❌ Failed to start AWS Transcribe stream: {e}")
+
+    async def receive_transcribe_data(self, callback):
+        try:
+            async for message in self.connection:
+                response = json.loads(message)
+                await callback(response)  # ✅ Unity로 전달
+        except websockets.ConnectionClosed:
+            print("🔌 AWS Transcribe connection closed.")
 
     async def disconnect(self):
         if self.connection:
             await self.connection.close()
             print("🔌 AWS Transcribe connection closed.")
-        else:
-            print("⚠️ No active AWS connection to close.")

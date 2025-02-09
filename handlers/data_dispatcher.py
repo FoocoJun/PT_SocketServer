@@ -4,21 +4,26 @@ class DataDispatcher:
         self.client_handler = None
 
     async def handle_audio(self, audio_data):
-        # ✅ 더미 연결 호출
-        await self.aws_handler.connect()
-        
-        # ✅ AWSHandler로 데이터 전송 (더미 데이터 반환)
         await self.aws_handler.send_audio(audio_data, self.handle_partial)
 
-    async def handle_partial(self, partial_result):
-        print(f"📝 Partial Result: {partial_result}")
-        
-        # ✅ Unity로 Partial 결과 전송
-        if self.client_handler:
-            await self.client_handler.send_to_unity(partial_result)
+    async def handle_partial(self, response):
+        # ✅ AWS Transcribe에서 받은 응답을 Unity로 전달
+        if "Transcript" in response:
+            results = response["Transcript"]["Results"]
+            if results:
+                transcript = results[0]["Alternatives"][0]["Transcript"]
+                is_partial = results[0].get("IsPartial", False)
+
+                # ✅ Partial과 Final 데이터 구분하여 전송
+                message_type = "Partial" if is_partial else "Final"
+                print(f"📥 {message_type} Result: {transcript}")
+
+                if self.client_handler:
+                    await self.client_handler.send_to_unity({
+                        "type": message_type,
+                        "transcript": transcript
+                    })
 
     async def close(self):
-        # ✅ AWSHandler 연결 종료
-        if hasattr(self.aws_handler, "disconnect"):
-            await self.aws_handler.disconnect()
-            print("🔌 AWSHandler disconnected.")
+        await self.aws_handler.disconnect()
+        print("🔌 AWSHandler disconnected.")
