@@ -36,13 +36,17 @@ class AWSHandler:
             "sample-rate": "16000"
         }
 
+        # ✅ URL 인코딩
+        query_string = urlencode(params)
+
+        # ✅ AWSRequest 객체 생성
         request = AWSRequest(
             method='GET',
-            url=f"{endpoint}?{urlencode(params)}",
+            url=f"{endpoint}?{query_string}",
             headers={"host": host}
         )
 
-        # ✅ 서명 추가
+        # ✅ SigV4Auth로 요청에 서명
         SigV4Auth(credentials, service, region).add_auth(request)
 
         return request.url
@@ -85,12 +89,14 @@ class AWSHandler:
         try:
             async for message in self.connection:
                 try:
-                    response = json.loads(message)
+                    # ✅ UTF-8로 디코딩
+                    decoded_message = message.decode('utf-8')  
+                    response = json.loads(decoded_message)
                     await callback(response)
                 except json.JSONDecodeError:
                     print(f"⚠️ Failed to decode AWS response: {message}")
-        except websockets.ConnectionClosed as e:
-            print(f"🔌 AWS Transcribe connection closed: {e}")
+        except websockets.ConnectionClosed:
+            print("🔌 AWS Transcribe connection closed.")
 
     # ✅ 연결 종료
     async def disconnect(self):
