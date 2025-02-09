@@ -22,11 +22,9 @@ class AWSHandler:
     def generate_presigned_url(self):
         session = boto3.Session()
         credentials = session.get_credentials()
-        region = AWS_REGION
-        service = 'transcribe'
 
-        host = f'transcribestreaming.{region}.amazonaws.com:8443'
-        endpoint = f'wss://{host}/stream-transcription-websocket'
+        host = f"transcribestreaming.{AWS_REGION}.amazonaws.com:8443"
+        endpoint = f"wss://{host}/stream-transcription-websocket"
 
         params = {
             "language-code": "en-US",
@@ -34,20 +32,13 @@ class AWSHandler:
             "sample-rate": "16000"
         }
 
-        # ✅ URL 인코딩
-        query_string = urlencode(params)
+        # ✅ 요청 서명(Signature) 추가
+        request = AWSRequest(method="GET", url=f"{endpoint}?{urlencode(params)}", headers={"host": host})
+        SigV4Auth(credentials, AWS_SERVICE, AWS_REGION).add_auth(request)
 
-        # ✅ AWSRequest 객체 생성
-        request = AWSRequest(
-            method='GET',
-            url=f"{endpoint}?{query_string}",
-            headers={"host": host}
-        )
-
-        # ✅ SigV4Auth로 요청에 서명
-        SigV4Auth(credentials, service, region).add_auth(request)
-
-        return request.url
+        presigned_url = request.url
+        print(f"Generated Presigned URL: {presigned_url}")
+        return presigned_url
 
     # ✅ AWS 연결 확인
     async def connect(self):
