@@ -73,6 +73,8 @@ class AWSHandler:
     async def start_transcribe_stream(self, callback):
         try:
             presigned_url = self.generate_presigned_url()
+            print(f"AWS_ACCESS_KEY_ID: {os.getenv('AWS_ACCESS_KEY_ID')}")
+            print(f"Generated Presigned URL: {presigned_url}")
             self.connection = await websockets.connect(presigned_url)
             print("🎙️ AWS Transcribe streaming started!")
 
