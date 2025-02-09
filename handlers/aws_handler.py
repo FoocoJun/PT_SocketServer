@@ -89,10 +89,13 @@ class AWSHandler:
         try:
             async for message in self.connection:
                 try:
-                    # ✅ UTF-8로 디코딩
-                    decoded_message = message.decode('utf-8')  
-                    response = json.loads(decoded_message)
+                    # ✅ 문자열인지 확인 후 처리
+                    if isinstance(message, bytes):
+                        message = message.decode('utf-8', errors='ignore')
+
+                    response = json.loads(message)
                     await callback(response)
+
                 except json.JSONDecodeError:
                     print(f"⚠️ Failed to decode AWS response: {message}")
         except websockets.ConnectionClosed:
