@@ -5,7 +5,7 @@ class DataDispatcher:
 
     async def handle_audio(self, audio_data):
         # ✅ 더미 연결 호출
-        await self.aws_handler.connect("wss://dummy-aws-transcribe")
+        await self.aws_handler.connect()
         
         # ✅ AWSHandler로 데이터 전송 (더미 데이터 반환)
         await self.aws_handler.send_audio(audio_data, self.handle_partial)
