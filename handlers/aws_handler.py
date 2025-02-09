@@ -3,10 +3,7 @@ import boto3
 import json
 import websockets
 import os
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
 from handlers.presigned_url_generator import AWSTranscribePresignedURL
-from urllib.parse import urlencode
 
 # ✅ 환경 변수 로드
 AWS_REGION = os.getenv("AWS_REGION")
@@ -29,26 +26,7 @@ class AWSHandler:
         # ✅ Presigned URL 생성
         presigner = AWSTranscribePresignedURL(access_key, secret_key, session_token, region)
         presigned_url = presigner.get_request_url(sample_rate=16000, language_code="en-US")
-
-        print("first Generated Presigned URL:", presigned_url)
-
-        session = boto3.Session()
-        credentials = session.get_credentials()
-
-        host = f"transcribestreaming.{AWS_REGION}.amazonaws.com:8443"
-        endpoint = f"wss://{host}/stream-transcription-websocket"
-
-        params = {
-            "language-code": "en-US",
-            "media-encoding": "pcm",
-            "sample-rate": "16000"
-        }
-
-        # ✅ 요청 서명(Signature) 추가
-        request = AWSRequest(method="GET", url=f"{endpoint}?{urlencode(params)}", headers={"host": host})
-        SigV4Auth(credentials, AWS_SERVICE, AWS_REGION).add_auth(request)
-
-        presigned_url = request.url
+        
         print(f"Generated Presigned URL: {presigned_url}")
         return presigned_url
 

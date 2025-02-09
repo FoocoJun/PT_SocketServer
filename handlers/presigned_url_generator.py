@@ -6,7 +6,7 @@ import datetime
 import urllib.parse
 
 class AWSTranscribePresignedURL:
-    def __init__(self, access_key: str, secret_key: str,session_token: str, region: str = 'us-east-1'):
+    def __init__(self, access_key: str, secret_key: str,session_token: str, region: str):
         self.access_key = access_key
         self.secret_key = secret_key
         self.session_token = session_token
