@@ -8,8 +8,8 @@ import json
 # ✅ 환경 변수 로드
 load_dotenv()
 
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
+AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 AWS_REGION = os.getenv("AWS_REGION")
 
 class AWSHandler:
@@ -23,11 +23,6 @@ class AWSHandler:
         self.connection = None
 
     async def connect(self):
-        # ✅ 환경 변수 로드 확인 (디버깅용)
-        print(f"AWS_ACCESS_KEY: {os.getenv('AWS_ACCESS_KEY_ID')}")
-        print(f"AWS_SECRET_KEY: {os.getenv('AWS_SECRET_ACCESS_KEY')}")
-        print(f"AWS_REGION: {os.getenv('AWS_REGION')}")
-
         try:
             # ✅ Transcribe 연결 테스트
             response = self.transcribe_client.list_transcription_jobs(MaxResults=1)
