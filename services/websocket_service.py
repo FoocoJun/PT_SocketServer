@@ -51,7 +51,7 @@ class WebSocketServer:
         except Exception as e:
             print(f"⚠️ Error: {e}")
         finally:
-            print("🔒 WebSocket connection closed.")
+            print("🔒 WebSocket connection closed.", flush=True)
             await self.cleanup(handler)  # ✅ 항상 핸들러 정리
 
         return ws_current
