@@ -5,6 +5,7 @@ import websockets
 import os
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
+from presigned_url_generator import AWSTranscribePresignedURL
 from urllib.parse import urlencode
 
 # ✅ 환경 변수 로드
@@ -20,6 +21,17 @@ class AWSHandler:
 
     # ✅ Presigned URL 생성
     def generate_presigned_url(self):
+        access_key = os.getenv("AWS_ACCESS_KEY_ID")
+        secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        session_token = os.getenv("AWS_SESSION_TOKEN", "")  # 세션 토큰이 없는 경우 빈 문자열 처리
+        region = os.getenv("AWS_REGION")
+
+        # ✅ Presigned URL 생성
+        presigner = AWSTranscribePresignedURL(access_key, secret_key, session_token, region)
+        presigned_url = presigner.get_request_url(sample_rate=16000, language_code="en-US")
+
+        print("first Generated Presigned URL:", presigned_url)
+
         session = boto3.Session()
         credentials = session.get_credentials()
 
