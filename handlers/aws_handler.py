@@ -49,7 +49,7 @@ class AWSHandler:
             print(f"📤 Sent formatted audio data to AWS")
         except Exception as e:
             print(f"⚠️ Error sending audio data: {e}")
-            self.disconnect()
+            await self.disconnect()
 
     # ✅ AWS Transcribe 스트리밍 시작
     async def start_transcribe_stream(self, callback):
