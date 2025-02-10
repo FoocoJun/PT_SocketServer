@@ -26,28 +26,22 @@ class ClientHandler:
                     self.is_streaming = False
 
         except json.JSONDecodeError:
-            print("JSON Failed handle_audio")
             # ✅ JSON이 아닌 경우 오디오 데이터로 처리
             if self.is_streaming:
                 await self.data_dispatcher.handle_audio(message)
 
     async def send_to_unity(self, partial_result):
         # ✅ 연결 상태 확인 후 데이터 전송
-        try:
-            if self.websocket and not self.websocket.closed:
-                await self.websocket.send_str(f"📝 Partial Result: {partial_result}")
-            else:
-                print("⚠️ WebSocket is already closed. Skipping message.")
-        except Exception as e:
-            print(f"⚠️ Error while sending message to Unity: {e}")
+        if not self.websocket.closed:
+            await self.websocket.send_str(f"📝 Partial Result: {partial_result}")
+        else:
+            print("⚠️ WebSocket is already closed. Skipping message.")
 
     async def close(self):
         # ✅ WebSocket 연결 종료
-        try:
+        if not self.websocket.closed:
             await self.websocket.close()
-            print("🔒 WebSocket connection closed.")
-        except Exception as e:
-            print(f"⚠️ Error while closing WebSocket: {e}")
+            print("🔒 WebSocket connection closed by ClientHandler.")
 
         # ✅ DataDispatcher를 통해 AWSHandler 연결 종료
         await self.data_dispatcher.close()
