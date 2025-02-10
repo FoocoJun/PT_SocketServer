@@ -19,10 +19,6 @@ class ClientHandler:
                     await self.data_dispatcher.start_streaming()
                     self.is_streaming = True
 
-                    # ✅ Unity로 준비 완료 신호 전송
-                    await self.client_handler.send_to_unity(json.dumps({"status": "ready"}))
-                    print("✅ send_to_unity 'status': 'ready'")
-
             elif event == "stop_streaming":
                 print("🛑 Stop Streaming Event Received")
                 if self.is_streaming:
