@@ -67,7 +67,7 @@ class AWSHandler:
     async def receive_transcribe_data(self, callback):
         try:
             async for message in self.connection:
-                callback(message);
+                await callback(message);
         except websockets.ConnectionClosed:
             print("🔌 AWS Transcribe connection closed.")
 
