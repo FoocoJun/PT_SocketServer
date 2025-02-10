@@ -49,7 +49,7 @@ class AWSHandler:
             print(f"📤 Sent formatted audio data to AWS")
         except Exception as e:
             print(f"⚠️ Error sending audio data: {e}")
-            self.connection = None
+            self.disconnect()
 
     # ✅ AWS Transcribe 스트리밍 시작
     async def start_transcribe_stream(self, callback):
@@ -78,6 +78,7 @@ class AWSHandler:
             # ✅ WebSocket 객체인지 확인한 후 종료
             if isinstance(self.connection, websockets.WebSocketClientProtocol) and not self.connection.closed:
                 await self.connection.close()
+                self.connection = None
                 print("🔒 Connection closed.")
             else:
                 print("⚠️ Invalid WebSocket connection or already closed.")
