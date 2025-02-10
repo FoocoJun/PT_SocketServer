@@ -1,11 +1,34 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: MIT-0
 import struct
 import binascii
 import json
 
+# ✅ 오디오 데이터를 AWS Transcribe 요구 포맷으로 변환
+def create_audio_event(payload):
+    # AWS 요구 헤더 생성
+    content_type_header = get_headers(":content-type", "application/octet-stream")
+    event_type_header = get_headers(":event-type", "AudioEvent")
+    message_type_header = get_headers(":message-type", "event")
+    
+    # 헤더 통합
+    headers = content_type_header + event_type_header + message_type_header
+
+    # ✅ 프렐루드(Prelude) 설정
+    total_length = struct.pack('>I', len(headers) + len(payload) + 16)
+    headers_length = struct.pack('>I', len(headers))
+    prelude = total_length + headers_length
+
+    # ✅ 프렐루드 CRC 체크섬
+    prelude_crc = struct.pack('>I', binascii.crc32(prelude) & 0xffffffff)
+
+    # ✅ 메시지 구성
+    message = prelude + prelude_crc + headers + payload
+
+    # ✅ 메시지 CRC 체크섬 추가
+    message_crc = struct.pack('>I', binascii.crc32(message) & 0xffffffff)
+    return message + message_crc
+
+# ✅ AWS Transcribe의 응답 디코딩
 def decode_event(message):
-    # Extract the prelude, headers, payload and CRC
     prelude = message[:8]
     total_length, headers_length = struct.unpack('>II', prelude)
     prelude_crc = struct.unpack('>I', message[8:12])[0]
@@ -13,11 +36,11 @@ def decode_event(message):
     payload = message[12+headers_length:-4]
     message_crc = struct.unpack('>I', message[-4:])[0]
 
-    # Check the CRCs
+    # ✅ CRC 무결성 검사
     assert prelude_crc == binascii.crc32(prelude) & 0xffffffff, "Prelude CRC check failed"
     assert message_crc == binascii.crc32(message[:-4]) & 0xffffffff, "Message CRC check failed"
 
-    # Parse the headers
+    # ✅ 헤더 파싱
     headers_dict = {}
     while headers:
         name_len = headers[0]
@@ -30,59 +53,12 @@ def decode_event(message):
 
     return headers_dict, json.loads(payload)
 
-def create_audio_event(payload):
-    #Build our headers
-    #ContentType
-    contentTypeHeader = get_headers(":content-type", "application/octet-stream")
-    eventTypeHeader = get_headers(":event-type", "AudioEvent")
-    messageTypeHeader = get_headers(":message-type", "event")
-    headers = []
-    headers.extend(contentTypeHeader)
-    headers.extend(eventTypeHeader)
-    headers.extend(messageTypeHeader)
+# ✅ AWS 헤더 생성 유틸리티
+def get_headers(header_name, header_value):
+    name = header_name.encode('utf-8')
+    name_length = bytes([len(name)])
+    value_type = bytes([7])  # 7 = 문자열 타입
+    value = header_value.encode('utf-8')
+    value_length = struct.pack('>H', len(value))
 
-    #Calculate total byte length and headers byte length
-    totalByteLength = struct.pack('>I', len(headers) + len(payload) + 16) #16 accounts for 8 byte prelude, 2x 4 byte crcs.
-    headersByteLength = struct.pack('>I', len(headers))
-
-    #Build the prelude
-    prelude = bytearray([0] * 8)
-    prelude[:4] = totalByteLength
-    prelude[4:] = headersByteLength
-
-    #calculate checksum for prelude (total + headers)
-    preludeCRC = struct.pack('>I', binascii.crc32(prelude) & 0xffffffff)
-
-    #Construct the message
-    messageAsList = bytearray()
-    messageAsList.extend(prelude)
-    messageAsList.extend(preludeCRC)
-    messageAsList.extend(headers)
-    messageAsList.extend(payload)
-
-    #Calculate checksum for message
-    message = bytes(messageAsList)
-    messageCRC = struct.pack('>I', binascii.crc32(message) & 0xffffffff)
-
-    #Add message checksum
-    messageAsList.extend(messageCRC)
-    message = bytes(messageAsList)
-
-    return message
-
-def get_headers(headerName, headerValue):
-    name = headerName.encode('utf-8')
-    nameByteLength = bytes([len(name)])
-    valueType = bytes([7]) #7 represents a string
-    value = headerValue.encode('utf-8')
-    valueByteLength = struct.pack('>H', len(value))
-
-    #Construct the header
-    headerList = bytearray()
-    headerList.extend(nameByteLength)
-    headerList.extend(name)
-    headerList.extend(valueType)
-    headerList.extend(valueByteLength)
-    headerList.extend(value)
-
-    return headerList
+    return name_length + name + value_type + value_length + value
