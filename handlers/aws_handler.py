@@ -73,8 +73,12 @@ class AWSHandler:
 
     # ✅ 연결 종료
     async def disconnect(self):
-        if self.connection and not self.connection.closed:
-            await self.connection.close()
-            print("🔌 AWS Transcribe connection closed.")
-        else:
-            print("⚠️ No active connection to close.")
+        try:
+            # ✅ WebSocket 객체인지 확인한 후 종료
+            if isinstance(self.connection, websockets.WebSocketClientProtocol) and not self.connection.closed:
+                await self.connection.close()
+                print("🔒 Connection closed.")
+            else:
+                print("⚠️ Invalid WebSocket connection or already closed.")
+        except Exception as e:
+            print(f"⚠️ Cleanup error: {e}")
