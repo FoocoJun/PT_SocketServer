@@ -1,29 +1,32 @@
+from handlers.aws_event_formatter import create_audio_event, decode_event
+
 class DataDispatcher:
     def __init__(self, aws_handler):
         self.aws_handler = aws_handler
         self.client_handler = None
 
-    async def handle_audio(self, audio_data):
-        await self.aws_handler.send_audio(audio_data, self.handle_partial)
+    async def handle_audio(self, raw_audio_data):
+        # ✅ 1. 클라이언트에서 받은 원시 오디오 데이터를 AWS 포맷으로 가공
+        formatted_audio = create_audio_event(raw_audio_data)
+        print(f"🎯 Audio data formatted for AWS")
 
-    async def handle_partial(self, response):
-        # ✅ AWS Transcribe에서 받은 응답을 Unity로 전달
-        if "Transcript" in response:
-            results = response["Transcript"]["Results"]
-            if results:
-                transcript = results[0]["Alternatives"][0]["Transcript"]
-                is_partial = results[0].get("IsPartial", False)
+        # ✅ 2. 가공된 데이터를 AWS로 전송
+        await self.aws_handler.send_audio(formatted_audio, self.handle_aws_response)
 
-                # ✅ Partial과 Final 데이터 구분하여 전송
-                message_type = "Partial" if is_partial else "Final"
-                print(f"📥 {message_type} Result: {transcript}")
+    async def handle_aws_response(self, aws_message):
+        try:
+            # ✅ 3. AWS 응답 디코딩
+            headers, transcript_payload = decode_event(aws_message)
+            print(f"📝 Decoded AWS Response: {transcript_payload}")
 
-                if self.client_handler:
-                    await self.client_handler.send_to_unity({
-                        "type": message_type,
-                        "transcript": transcript
-                    })
+            # ✅ 4. Unity 클라이언트로 전송
+            if self.client_handler:
+                await self.client_handler.send_to_unity(transcript_payload)
+
+        except Exception as e:
+            print(f"⚠️ Failed to handle AWS response: {e}")
 
     async def close(self):
-        await self.aws_handler.disconnect()
-        print("🔌 AWSHandler disconnected.")
+        if hasattr(self.aws_handler, "disconnect"):
+            await self.aws_handler.disconnect()
+            print("🔌 AWSHandler disconnected")

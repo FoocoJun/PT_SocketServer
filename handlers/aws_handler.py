@@ -1,6 +1,5 @@
 import asyncio
 import boto3
-import json
 import websockets
 import os
 from handlers.presigned_url_generator import AWSTranscribePresignedURL
@@ -18,10 +17,10 @@ class AWSHandler:
 
     # ✅ Presigned URL 생성
     def generate_presigned_url(self):
-        access_key = os.getenv("AWS_ACCESS_KEY_ID")
-        secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        access_key = AWS_ACCESS_KEY
+        secret_key = AWS_SECRET_KEY
         session_token = os.getenv("AWS_SESSION_TOKEN", "")  # 세션 토큰이 없는 경우 빈 문자열 처리
-        region = os.getenv("AWS_REGION")
+        region = AWS_REGION
 
         # ✅ Presigned URL 생성
         presigner = AWSTranscribePresignedURL(access_key, secret_key, session_token, region)
@@ -41,12 +40,13 @@ class AWSHandler:
         return True
 
     # ✅ 오디오 데이터 전송
-    async def send_audio(self, audio_data, callback):
+    async def send_audio(self, formatted_audio, callback):
         if not self.connection:
             await self.start_transcribe_stream(callback)
 
         try:
-            await self.connection.send(audio_data)  # ✅ Binary 데이터 전송
+            await self.connection.send(formatted_audio)  # ✅ 포맷된 데이터 전송
+            print(f"📤 Sent formatted audio data to AWS")
         except Exception as e:
             print(f"⚠️ Error sending audio data: {e}")
 
@@ -54,8 +54,6 @@ class AWSHandler:
     async def start_transcribe_stream(self, callback):
         try:
             presigned_url = self.generate_presigned_url()
-            print(f"AWS_ACCESS_KEY_ID: {os.getenv('AWS_ACCESS_KEY_ID')}")
-            print(f"Generated Presigned URL: {presigned_url}")
             self.connection = await websockets.connect(presigned_url)
             print("🎙️ AWS Transcribe streaming started!")
 
@@ -69,16 +67,7 @@ class AWSHandler:
     async def receive_transcribe_data(self, callback):
         try:
             async for message in self.connection:
-                try:
-                    # ✅ 문자열인지 확인 후 처리
-                    if isinstance(message, bytes):
-                        message = message.decode('utf-8', errors='ignore')
-
-                    response = json.loads(message)
-                    await callback(response)
-
-                except json.JSONDecodeError:
-                    print(f"⚠️ Failed to decode AWS response: {message}")
+                callback(message);
         except websockets.ConnectionClosed:
             print("🔌 AWS Transcribe connection closed.")
 
