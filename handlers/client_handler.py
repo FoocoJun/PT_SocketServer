@@ -8,10 +8,10 @@ class ClientHandler:
         # DataDispatcher로 음성 데이터 전달
         await self.data_dispatcher.handle_audio(audio_data)
 
-    async def send_to_unity(self, partial_result):
+    async def send_to_unity(self, result):
         # ✅ 연결 상태 확인 후 데이터 전송
         if not self.websocket.closed:
-            await self.websocket.send_str(f"📝 Partial Result: {partial_result}")
+            await self.websocket.send_str(f"{result}")
         else:
             print("⚠️ WebSocket is already closed. Skipping message.")
 
