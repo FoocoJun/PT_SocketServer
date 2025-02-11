@@ -1,13 +1,29 @@
-from datetime import datetime
+import json
 
 class ClientHandler:
-    def __init__(self, websocket):
+    def __init__(self, websocket, data_dispatcher):
         self.websocket = websocket
+        self.data_dispatcher = data_dispatcher
+        self.data_dispatcher.client_handler = self  # DataDispatcher가 ClientHandler를 참조할 수 있도록 설정
 
-    async def process(self, message):
-        receive_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"📥 [{receive_time} UTC] Processing message: {message}")
+    async def process(self, audio_data):
+        # DataDispatcher로 음성 데이터 전달
+        await self.data_dispatcher.handle_audio(audio_data)
 
-        # ✅ 클라이언트에 확인 메시지 보내기
-        confirmation_message = f"✅ 잘 받았어요! ({receive_time} UTC)"
-        await self.websocket.send_str(confirmation_message)
+    async def send_to_unity(self, result):
+        # ✅ 연결 상태 확인 후 데이터 전송
+        if not self.websocket.closed:
+            await self.websocket.send_str(result)
+        else:
+            print("⚠️ WebSocket is already closed. Skipping message.")
+
+    async def close(self):
+        # ✅ WebSocket 연결 종료
+        if not self.websocket.closed:
+            await self.websocket.close()
+            print("🔒 WebSocket connection closed by ClientHandler.")
+
+        # ✅ DataDispatcher를 통해 AWSHandler 연결 종료
+        await self.data_dispatcher.close()
+
+        print("✅ ClientHandler resources cleaned up.")

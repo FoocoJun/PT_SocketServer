@@ -1,24 +1,87 @@
-import websockets
 import asyncio
-import json
+import boto3
+import websockets
 import os
-from dotenv import load_dotenv
+from handlers.presigned_url_generator import AWSTranscribePresignedURL
 
-# .env 파일 로드
-load_dotenv()
-
-# 환경 변수 가져오기
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_KEY')
+# ✅ 환경 변수 로드
+AWS_REGION = os.getenv("AWS_REGION")
+AWS_SERVICE = "transcribe"
+AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 class AWSHandler:
     def __init__(self):
-        self.aws_endpoint = "wss://transcribestreaming.ap-northeast-2.amazonaws.com"
+        self.connection = None
+        self.transcribe_client = boto3.client('transcribe', region_name=AWS_REGION)
 
-    async def send_to_aws(self, data):
-        headers = {"Authorization": "Bearer ${AWS_SECRET_KEY}"}
+    # ✅ Presigned URL 생성
+    def generate_presigned_url(self):
+        access_key = AWS_ACCESS_KEY
+        secret_key = AWS_SECRET_KEY
+        session_token = os.getenv("AWS_SESSION_TOKEN", "")  # 세션 토큰이 없는 경우 빈 문자열 처리
+        region = AWS_REGION
 
-        async with websockets.connect(self.aws_endpoint, extra_headers=headers) as aws_ws:
-            await aws_ws.send(data)  # Unity에서 받은 데이터 전송
-            response = await aws_ws.recv()  # AWS로부터 partial 응답 받기
-            return response
+        # ✅ Presigned URL 생성
+        presigner = AWSTranscribePresignedURL(access_key, secret_key, session_token, region)
+        presigned_url = presigner.get_request_url(sample_rate=16000, language_code="en-US")
+        
+        print(f"Generated Presigned URL: {presigned_url}")
+        return presigned_url
+
+    # ✅ AWS 연결 확인
+    async def connect(self):
+        try:
+            response = self.transcribe_client.list_transcription_jobs(MaxResults=1)
+            print("✅ Successfully connected to AWS Transcribe!")
+        except Exception as e:
+            print(f"❌ Failed to connect to AWS Transcribe: {e}")
+            return False
+        return True
+
+    # ✅ 오디오 데이터 전송
+    async def send_audio(self, formatted_audio, callback):
+        if not self.connection:
+            await self.start_transcribe_stream(callback)
+
+        try:
+            await self.connection.send(formatted_audio)  # ✅ 포맷된 데이터 전송
+            print(f"📤 Sent formatted audio data to AWS")
+        except Exception as e:
+            print(f"⚠️ Error sending audio data: {e}")
+            await self.disconnect()
+
+    # ✅ AWS Transcribe 스트리밍 시작
+    async def start_transcribe_stream(self, callback):
+        try:
+            presigned_url = self.generate_presigned_url()
+            self.connection = await websockets.connect(presigned_url)
+            print("🎙️ AWS Transcribe streaming started!")
+
+            # ✅ AWS 데이터 수신 비동기 처리
+            asyncio.create_task(self.receive_transcribe_data(callback))
+
+        except Exception as e:
+            print(f"❌ Failed to start AWS Transcribe stream: {e}")
+
+    # ✅ AWS 데이터 수신
+    async def receive_transcribe_data(self, callback):
+        try:
+            async for message in self.connection:
+                await callback(message);
+        except websockets.ConnectionClosed:
+            print("🔌 AWS Transcribe connection closed.")
+
+    # ✅ 연결 종료
+    async def disconnect(self):
+        try:
+            # ✅ WebSocket 객체인지 확인한 후 종료
+            if isinstance(self.connection, websockets.WebSocketClientProtocol) and not self.connection.closed:
+                await self.connection.close()
+                self.connection = None
+                print("🔒 Connection closed.")
+            else:
+                print("⚠️ Invalid WebSocket connection or already closed.")
+                self.connection = None
+        except Exception as e:
+            print(f"⚠️ Cleanup error: {e}")

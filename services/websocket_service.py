@@ -1,46 +1,81 @@
 import asyncio
+import aiohttp
 from aiohttp import web
 from handlers.client_handler import ClientHandler
+from handlers.data_dispatcher import DataDispatcher
+from handlers.aws_handler import AWSHandler
+import os
+import random
 
 class WebSocketServer:
     def __init__(self, host: str, port: int):
         self.host = host
         self.port = port
+        self.ping_target = os.getenv("PING_TARGET")  # ✅ Ping 대상 서버 설정
 
-    # ✅ 모든 요청을 로깅하는 함수
-    async def request_logger(self, request):
-        print(f"🌐 Received {request.method} request for {request.path}")
-        return web.Response(text="Request received")
+    # ✅ Ping 보내는 비동기 함수
+    async def ping_target_server(self):
+        while True:
+            if self.ping_target:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(f"{self.ping_target}/health") as response:
+                            print(f"🔗 Ping sent to {self.ping_target}, Status: {response.status}")
+                except Exception as e:
+                    print(f"⚠️ Ping failed: {e}")
 
-    async def websocket_handler(self, request):
-        print("📡 Incoming WebSocket connection...")
-        ws_current = web.WebSocketResponse()
-        await ws_current.prepare(request)
+            # ✅ 5~8분(300~480초) 사이의 랜덤 대기 시간
+            wait_time = random.randint(300, 480)
+            print(f"⏱️ Next ping in {wait_time // 60} minutes {wait_time % 60} seconds")
+            await asyncio.sleep(wait_time)
 
-        print("✅ WebSocket client connected!", flush=True)
-        handler = ClientHandler(ws_current)
-        try:
-            async for msg in ws_current:
-                print(f"📥 Received: {msg.data}", flush=True)
-                await handler.process(msg.data)
-        except Exception as e:
-            print(f"⚠️ Unexpected error: {e}")
-        finally:
-            print("🔒 WebSocket connection closed.")
-        return ws_current
-
+    # ✅ 헬스 체크 엔드포인트
     async def health_check(self, request):
         return web.Response(text="OK")
 
-    def start(self):
+    async def websocket_handler(self, request):
+        ws_current = web.WebSocketResponse()
+        await ws_current.prepare(request)
+
+        print("✅ New WebSocket client connected!")
+
+        aws_handler = AWSHandler()
+        connected = await aws_handler.connect()
+
+        if not connected:
+            print("⚠️ AWS 연결 실패 - WebSocket 연결은 유지됩니다.")
+
+        data_dispatcher = DataDispatcher(aws_handler)
+        handler = ClientHandler(ws_current, data_dispatcher)
+
+        data_dispatcher.client_handler = handler
+
+        try:
+            async for msg in ws_current:
+                await handler.process(msg.data)
+        except Exception as e:
+            print(f"⚠️ Error: {e}")
+        finally:
+            try:
+                await handler.close()  # ✅ 핸들러 종료 및 리소스 정리
+                print("✅ Handler cleanup successful.")
+            except Exception as cleanup_error:
+                print(f"⚠️ Cleanup error: {cleanup_error}")  # ✅ 예외 처리 추가
+
+        return ws_current
+
+    async def start_server(self):
         app = web.Application()
-
-        # 헬스 체크 및 WebSocket 라우팅
-        app.router.add_get("/", self.health_check)
         app.router.add_get("/ws", self.websocket_handler)
-
-        # ✅ 모든 요청 로깅 (404 에러 방지 및 디버깅용)
-        app.router.add_route('*', '/{tail:.*}', self.request_logger)
+        app.router.add_get("/health", self.health_check)  # ✅ 헬스 체크 엔드포인트 추가
 
         print(f"🚀 Server started at ws://{self.host}:{self.port}")
-        web.run_app(app, host=self.host, port=self.port)
+
+        # ✅ 서버 구동과 Ping을 병렬로 실행
+        await asyncio.gather(
+            web._run_app(app, host=self.host, port=self.port),
+            self.ping_target_server()  # Ping 기능 활성화
+        )
+
+    def start(self):
+        asyncio.run(self.start_server())

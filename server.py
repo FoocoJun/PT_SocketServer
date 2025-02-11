@@ -1,5 +1,8 @@
 import os
+from dotenv import load_dotenv
 from services.websocket_service import WebSocketServer
+
+load_dotenv()
 
 if __name__ == "__main__":
     host = "0.0.0.0"
