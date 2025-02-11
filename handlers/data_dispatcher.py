@@ -20,6 +20,8 @@ class DataDispatcher:
             headers, transcript_payload = decode_event(aws_message)
             print(f"📝 Decoded AWS Response: {transcript_payload}")
 
+            # TODO: isPartial이 false면 서버에서 aws connection disconnect
+
             # ✅ 4. Unity 클라이언트로 전송
             if self.client_handler:
                 await self.client_handler.send_to_unity(json.dumps(transcript_payload))
