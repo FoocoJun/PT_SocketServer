@@ -20,16 +20,7 @@ class DataDispatcher:
             headers, transcript_payload = decode_event(aws_message)
             print(f"📝 Decoded AWS Response: {transcript_payload}")
 
-            # ✅ 4. JSON 데이터 변환
-            # 작은따옴표 → 큰따옴표, 대문자 → 소문자 변환은 json 모듈로 처리
-            try:
-                # 문자열이 JSON 형식이 아닌 경우 예외 처리
-                transcript_payload = json.loads(transcript_payload)
-            except json.JSONDecodeError as json_error:
-                print(f"⚠️ JSON 디코딩 오류: {json_error}")
-                return
-
-            # ✅ 5. Unity 클라이언트로 전송
+            # ✅ 4. Unity 클라이언트로 전송
             if self.client_handler:
                 await self.client_handler.send_to_unity(json.dumps(transcript_payload))
 
