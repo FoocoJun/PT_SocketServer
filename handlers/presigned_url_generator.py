@@ -34,7 +34,7 @@ class AWSTranscribePresignedURL:
         sample_rate:int,
         language_code: str = "",
         media_encoding: str = "pcm",
-        vocabulary_name: str = "",
+        vocabulary_name: str = "MultiserviceTacticalBrevityCodes",
         session_id: str = "",
         vocabulary_filter_name: str = "",
         vocabulary_filter_method: str = "",
